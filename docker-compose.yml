@@ -1,0 +1,36 @@
+# Sobe o site + um Postgres junto, tudo local — não precisa de VPS nem de
+# conta em nenhum serviço de nuvem.
+#
+# Antes do primeiro "docker compose up": copie .env.example para .env e
+# preencha SESSION_SECRET e MODERACAO_SENHA com valores fortes e únicos
+# (NÃO use os valores de exemplo do .env.example se você for deixar o site
+# acessível pela internet — ver README, seção "Segurança").
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: auditoria
+      POSTGRES_PASSWORD: auditoria
+      POSTGRES_DB: auditoria_bu
+    volumes:
+      - auditoria_bu_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auditoria -d auditoria_bu"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${PORTA_LOCAL:-8080}:8080"
+    environment:
+      DATABASE_URL: postgresql://auditoria:auditoria@db:5432/auditoria_bu
+      SESSION_SECRET: ${SESSION_SECRET:?defina SESSION_SECRET no arquivo .env (veja .env.example)}
+      MODERACAO_SENHA: ${MODERACAO_SENHA:?defina MODERACAO_SENHA no arquivo .env (veja .env.example)}
+
+volumes:
+  auditoria_bu_db:
